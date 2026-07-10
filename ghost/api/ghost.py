@@ -143,7 +143,11 @@ def convert_to_real_user(ghost_email, real_email, first_name=None, last_name=Non
 		if not otp_code:
 			frappe.throw(_("OTP Code is required for conversion."))
 
-		verify_otp(otp_code, email=real_email, purpose="Conversion")
+		phone = None
+		if real_email and real_email.endswith("@mobile.login"):
+			phone = real_email.split("@")[0]
+
+		verify_otp(otp_code, email=real_email if not phone else None, phone=phone, purpose="Conversion")
 	logger.info(
 		f"Ghost conversion OTP verification duration_ms={(time.monotonic() - otp_start) * 1000:.2f} "
 		f"ghost={ghost_email} real={real_email}"
