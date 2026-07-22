@@ -1,0 +1,45 @@
+meta {
+  name: Update Mobile Number
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/method/ghost.api.user_details.update_mobile_number
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "mobile_no": "+911234567890"
+  }
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+}
+
+vars:pre-request {
+  baseUrl: http://localhost:8000
+  accessToken: PASTE_ACCESS_TOKEN_FROM_LOGIN
+}
+
+docs {
+  ### Update Mobile Number
+
+  Lets the logged-in caller set/update their own mobile_no. Self-only —
+  always acts on the authenticated session's own user, never a
+  caller-supplied user id. Auth required (Guest rejected).
+
+  Get `accessToken` from a successful call to `Direct Auth/Login.bru`
+  first (its response includes `access_token`).
+
+  **Required:** `mobile_no`.
+
+  Rejects with a ValidationError if the number is already associated
+  with a *different* user account.
+
+  **Response:**
+    {"success": true, "user", "mobile_no"}
+}

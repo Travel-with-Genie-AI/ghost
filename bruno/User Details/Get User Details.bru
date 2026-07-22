@@ -1,0 +1,35 @@
+meta {
+  name: Get User Details
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/method/ghost.api.user_details.get_user_details
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+}
+
+vars:pre-request {
+  baseUrl: http://localhost:8000
+  accessToken: PASTE_ACCESS_TOKEN_FROM_LOGIN
+}
+
+docs {
+  ### Get User Details
+
+  Returns the logged-in caller's own profile. Self-only — no user-id
+  param, always resolved from the authenticated session, so this can
+  never be used to look up someone else's details. Auth required
+  (Guest rejected).
+
+  Get `accessToken` from a successful call to `Direct Auth/Login.bru`
+  first (its response includes `access_token`).
+
+  **Response:**
+    {"success": true, "name", "email", "mobile_no", "first_name", "last_name", "full_name", "user_image"}
+}
