@@ -27,11 +27,23 @@ def send_otp(email=None, phone=None, purpose=None, user=None):
 			purpose=purpose,
 			user=user,
 		)
+
+		# Sandbox mode never actually sends (by design, `sent` is always
+		# False there); a real request with neither email nor phone has
+		# nothing to deliver to either. Both are legitimate non-failures.
+		# Anything else with `sent: False` means a real send was attempted
+		# and failed (see generate_otp -> send_error, logged in full to
+		# Error Log) — must not be reported as success to the frontend.
+		delivery_attempted = bool(email) or bool(phone)
+		delivered = response.get("sandbox") or response.get("sent") or not delivery_attempted
+
+		if not delivered:
+			frappe.local.response["http_status_code"] = 502
+			frappe.local.response["message"] = _("Failed to send OTP — please try again")
+			return
+
 		frappe.local.response["http_status_code"] = 200
 		frappe.local.response["message"] = _("OTP generated successfully")
-
-
-
 
 	except frappe.ValidationError as e:
 		frappe.local.response["http_status_code"] = 400

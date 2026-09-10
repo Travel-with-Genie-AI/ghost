@@ -106,6 +106,7 @@ def generate(email=None, phone=None, purpose=None, user=None, send=True):
 	otp_doc.insert(ignore_permissions=True)
 
 	send_results = []
+	send_error = None
 	if send:
 		try:
 			if delivery_method in ["Email", "Both"] and email:
@@ -131,6 +132,10 @@ def generate(email=None, phone=None, purpose=None, user=None, send=True):
 			frappe.log_error(
 				message=f"OTP generated but failed to send: {frappe.get_traceback()}", title="OTP Generation"
 			)
+			# Real cause (SMTP error, gateway failure, etc.) is in Error Log above —
+			# only a generic marker is returned, never raw exception text, since this
+			# reaches the API response and ultimately the end customer.
+			send_error = "delivery_failed"
 
 
 
@@ -140,6 +145,7 @@ def generate(email=None, phone=None, purpose=None, user=None, send=True):
 		"name": otp_doc.name,
 		"sent": len(send_results) > 0,
 		"send_results": send_results,
+		"send_error": send_error,
 	}
 
 

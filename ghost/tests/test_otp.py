@@ -10,6 +10,10 @@ class TestFrappeIdentityOTP(unittest.TestCase):
 		settings.otp_delivery_type = "Email"
 		settings.otp_code_type = "Numeric"
 		settings.otp_length = 6
+		# This class tests the real (non-sandbox) flow — sandbox_mode may be
+		# left on from other tests/manual runs, which would silently short-
+		# circuit generate() and skip DB record creation entirely.
+		settings.sandbox_mode = 0
 		settings.save()
 
 	def test_otp_flow(self):
