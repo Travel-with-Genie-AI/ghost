@@ -47,16 +47,38 @@ class OTP(Document):
 			frappe.db.set_value("OTP", otp.name, "status", "Expired")
 
 
+def _is_sandboxed(settings, email=None):
+	"""True if this OTP request should get the fixed Sandbox OTP instead of
+	a real one.
+
+	Two independent triggers:
+	- Global ``sandbox_mode`` is on: ALL traffic on this site gets the fixed
+	  OTP. Use only in dev/QA environments where no real users are present.
+	- ``sandbox_email_domain`` is set and ``email`` ends with it: ONLY that
+	  domain's traffic gets the fixed OTP. Safe to enable alongside real
+	  production traffic, since real users' emails won't match it. Intended
+	  for load/QA testing against a live site without disrupting real OTP
+	  delivery.
+	"""
+	if getattr(settings, "sandbox_mode", 0):
+		return True
+	domain = (getattr(settings, "sandbox_email_domain", None) or "").strip().lstrip("@").lower()
+	if domain and email and email.strip().lower().endswith("@" + domain):
+		return True
+	return False
+
+
 def generate(email=None, phone=None, purpose=None, user=None, send=True):
 	settings = frappe.get_single("Ghost Settings")
 	delivery_method = settings.otp_delivery_type or "Email"
 
 	# ── Sandbox short-circuit ────────────────────────────────────────────────
-	# When sandbox mode is active, bypass all real OTP generation and delivery.
-	# Return the fixed code immediately – no DB record, no email/SMS.
-	if getattr(settings, "sandbox_mode", 0):
+	# Bypass real OTP generation and delivery for sandboxed requests (see
+	# _is_sandboxed above for the two independent triggers). Return the
+	# fixed code immediately – no DB record, no email/SMS.
+	if _is_sandboxed(settings, email):
 		sandbox_otp = getattr(settings, "sandbox_otp", None) or "000141"
-		frappe.logger().debug("Ghost: sandbox_mode active – returning fixed OTP")
+		frappe.logger().debug("Ghost: sandbox short-circuit active – returning fixed OTP")
 		return {
 			"otp_code": sandbox_otp,
 			"name": None,
@@ -154,10 +176,10 @@ def verify(otp_code, email=None, phone=None, purpose=None):
 	# Use get_cached_doc so repeated verify() calls during a test run don't
 	# incur extra DB round-trips for the settings read.
 	settings = frappe.get_cached_doc("Ghost Settings")
-	if getattr(settings, "sandbox_mode", 0):
+	if _is_sandboxed(settings, email):
 		sandbox_otp = getattr(settings, "sandbox_otp", None) or "000141"
 		if otp_code == sandbox_otp:
-			frappe.logger().debug("Ghost: sandbox_mode – OTP accepted")
+			frappe.logger().debug("Ghost: sandbox short-circuit – OTP accepted")
 			return {"valid": True, "sandbox": True}
 		frappe.throw(_("Invalid OTP"))
 	# ─────────────────────────────────────────────────────────────────────────
