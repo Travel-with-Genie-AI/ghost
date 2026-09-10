@@ -47,6 +47,16 @@ def send_otp_email(otp_code, email, settings, **kwargs):
 			recipients=[email], sender=email_account.email_id, subject=subject, message=message, delayed=False
 		)
 
+		# frappe.sendmail(delayed=False) still only *queues* the email — the
+		# real SMTP attempt fires on the next db.commit(), which would
+		# otherwise happen later, after this function (and generate_otp/
+		# send_otp above it) have already returned a "sent" response to the
+		# caller. Commit now, inside this try, so a genuine SMTP failure
+		# (bad credentials, connection refused, etc.) raises here and gets
+		# caught below instead of surfacing asynchronously after the
+		# response has already reported success.
+		frappe.db.commit()
+
 		return {"status": "sent", "method": "email"}
 
 	except Exception as e:
